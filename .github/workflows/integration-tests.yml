@@ -1,5 +1,9 @@
 name: integration-tests
-on: [ push, pull_request ]
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 # If you want to add integration tests for linux-based binary,
 # please, use the following files:
 # - tests/integration/Makefile
@@ -17,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Install rust
         uses: ./.github/actions/rust-toolchain
@@ -28,7 +32,7 @@ jobs:
         run: |
           cargo build --all-features
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: integration-tests
           path: ./target/debug/sccache
@@ -41,7 +45,7 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Test
         run: cd tests/integration && WITH_COVERAGE=1 make test-${{ matrix.type }}
@@ -56,7 +60,7 @@ jobs:
           ls ../../target/integration-coverage/reports/lcov.info -l
 
       - name: Upload coverage results (to Codecov.io)
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           files: target/integration-coverage/reports/lcov.info
           name: codecov-umbrella-integration-${{ matrix.type }}
@@ -75,10 +79,10 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Configure Cache Env
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
             core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
@@ -89,7 +93,7 @@ jobs:
         with:
           toolchain: "stable"
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: integration-tests
           path: /home/runner/.cargo/bin/
@@ -123,10 +127,18 @@ jobs:
       SCCACHE_ERROR_LOG: "${{ github.workspace }}\\server_log.txt"
 
     steps:
-      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Configure MSVC environment
+        shell: pwsh
+        run: |
+          $vs = Join-Path ${env:ProgramFiles} 'Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat'
+          cmd /c "`"$vs`" -arch=amd64 && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') {
+              "$($matches[1])=$($matches[2])" >> $env:GITHUB_ENV
+            }
+          }
 
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Install rust
         uses: ./.github/actions/rust-toolchain
@@ -215,20 +227,20 @@ jobs:
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       # I don't want to break the cache during testing. Will turn on after I
       # make sure it's working.
       #
       # - name: Configure Cache Env
-      #   uses: actions/github-script@v8
+      #   uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
       #   with:
       #     script: |
       #       core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
       #       core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '')
 
       # - name: Configure ROCm Env
-      #   uses: actions/github-script@v8
+      #   uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
       #   with:
       #     script: |
       #       core.exportVariable('ROCM_PATH', process.env.ROCM_PATH || '');
@@ -251,7 +263,7 @@ jobs:
         run: |
           cargo build -p randomize_readdir
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: integration-tests
           path: /home/runner/.cargo/bin/
@@ -304,7 +316,7 @@ jobs:
       SCCACHE_PATH: target/debug/sccache
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Install rust
         uses: ./.github/actions/rust-toolchain

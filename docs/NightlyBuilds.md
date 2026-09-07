@@ -76,3 +76,21 @@ not promote `latest` or `nightly`, because those tags must remain multi-arch.
 
 Workflow YAML is orchestration only. Implementation and policy live in
 `scripts/ci/ci.sh`.
+
+## Centralized dependencies
+
+The `centralized dependencies` workflow keeps dependency inputs current without
+opening pull requests. It runs on the staging branch
+`ci/centralized_versions`, updates all managed inputs, runs verification, and
+pushes the exact checked commit to `main` only after verification succeeds.
+
+Managed dependency classes include:
+
+- direct Rust dependencies in `Cargo.toml`
+- resolved Rust dependencies in `Cargo.lock`
+- external GitHub Action SHAs used by these workflows
+- external Action runtime checks, including the Node 20 ban
+- floating base images consumed by the central build script
+
+The staging branch is not a second source of truth. It exists only so a failed
+weekly update has a readable branch without moving `main`.

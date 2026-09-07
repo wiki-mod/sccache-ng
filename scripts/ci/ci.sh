@@ -15,6 +15,34 @@ readonly RETENTION_DAYS="14"
 readonly CARGO_FLAGS="--locked --release --all-features --bins"
 readonly OPT_LEVEL="3"
 readonly LTO_MODE="fat"
+readonly DEPS_BRANCH="ci/centralized_versions"
+readonly ACTIONS_CHECKOUT_REF="refs/tags/v6"
+readonly ACTIONS_CACHE_REF="refs/tags/v5"
+readonly ACTIONS_UPLOAD_ARTIFACT_REF="refs/tags/v7"
+readonly ACTIONS_DOWNLOAD_ARTIFACT_REF="refs/tags/v8"
+readonly ACTIONS_ATTEST_PROVENANCE_REF="refs/tags/v3"
+readonly ACTIONS_ATTEST_SBOM_REF="refs/tags/v3"
+readonly ACTIONS_GITHUB_SCRIPT_REF="refs/tags/v8"
+readonly CODECOV_ACTION_REF="refs/tags/v7"
+readonly CODSPEED_ACTION_REF="refs/tags/v5"
+readonly DTOLNAY_RUST_TOOLCHAIN_REF="refs/heads/stable"
+readonly SWATINEM_RUST_CACHE_REF="refs/tags/v2"
+readonly CANONICAL_ACTIONS_REF="refs/heads/release"
+readonly VMACTIONS_FREEBSD_VM_REF="refs/tags/v1"
+readonly ACTIONS_CHECKOUT_SHA="d23441a48e516b6c34aea4fa41551a30e30af803"
+readonly ACTIONS_CACHE_SHA="caa296126883cff596d87d8935842f9db880ef25"
+readonly ACTIONS_UPLOAD_ARTIFACT_SHA="043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+readonly ACTIONS_DOWNLOAD_ARTIFACT_SHA="3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+readonly ACTIONS_ATTEST_PROVENANCE_SHA="977bb373ede98d70efdf65b84cb5f73e068dcc2a"
+readonly ACTIONS_ATTEST_SBOM_SHA="4651f806c01d8637787e274ac3bdf724ef169f34"
+readonly ACTIONS_GITHUB_SCRIPT_SHA="ed597411d8f924073f98dfc5c65a23a2325f34cd"
+readonly CODECOV_ACTION_SHA="fb8b3582c8e4def4969c97caa2f19720cb33a72f"
+readonly CODSPEED_ACTION_SHA="373d6868929f444bc08d901fd0eb0ad52a8875ea"
+readonly DTOLNAY_RUST_TOOLCHAIN_SHA="6bed0761d98439e5a578e2877258200ad565ba87"
+readonly SWATINEM_RUST_CACHE_SHA="6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
+readonly CANONICAL_ACTIONS_SHA="369aa83db4b62bdf1cb4240f651f11f0eb9fac11"
+readonly VMACTIONS_FREEBSD_VM_SHA="f0552d3b69211736abd97f02ff3d4674c56b73b1"
+readonly BANNED_ACTION_RUNTIME="node${BANNED_NODE_MAJOR:-20}"
 
 MODE="${MODE:-${1:-nightly}}"
 ARCH="${ARCH:-all}"
@@ -121,6 +149,11 @@ require_base_tools() {
 require_docker_tools() {
   require_cmd docker
   docker buildx version >/dev/null
+}
+
+require_rust_tools() {
+  require_cmd cargo
+  require_cmd rustc
 }
 
 gh_repo() {
@@ -620,12 +653,178 @@ verify() {
   require_base_tools
   require_docker_tools
   selected_arches >/dev/null
+  verify_action_pins
   log "verify=ok"
+}
+
+action_registry() {
+  cat <<EOF
+actions/checkout actions/checkout ${ACTIONS_CHECKOUT_REF} ACTIONS_CHECKOUT_SHA ${ACTIONS_CHECKOUT_SHA} action.yml
+actions/cache actions/cache ${ACTIONS_CACHE_REF} ACTIONS_CACHE_SHA ${ACTIONS_CACHE_SHA} action.yml
+actions/upload-artifact actions/upload-artifact ${ACTIONS_UPLOAD_ARTIFACT_REF} ACTIONS_UPLOAD_ARTIFACT_SHA ${ACTIONS_UPLOAD_ARTIFACT_SHA} action.yml
+actions/download-artifact actions/download-artifact ${ACTIONS_DOWNLOAD_ARTIFACT_REF} ACTIONS_DOWNLOAD_ARTIFACT_SHA ${ACTIONS_DOWNLOAD_ARTIFACT_SHA} action.yml
+actions/attest-build-provenance actions/attest-build-provenance ${ACTIONS_ATTEST_PROVENANCE_REF} ACTIONS_ATTEST_PROVENANCE_SHA ${ACTIONS_ATTEST_PROVENANCE_SHA} action.yml
+actions/attest-sbom actions/attest-sbom ${ACTIONS_ATTEST_SBOM_REF} ACTIONS_ATTEST_SBOM_SHA ${ACTIONS_ATTEST_SBOM_SHA} action.yml
+actions/github-script actions/github-script ${ACTIONS_GITHUB_SCRIPT_REF} ACTIONS_GITHUB_SCRIPT_SHA ${ACTIONS_GITHUB_SCRIPT_SHA} action.yml
+codecov/codecov-action codecov/codecov-action ${CODECOV_ACTION_REF} CODECOV_ACTION_SHA ${CODECOV_ACTION_SHA} action.yml
+CodSpeedHQ/action CodSpeedHQ/action ${CODSPEED_ACTION_REF} CODSPEED_ACTION_SHA ${CODSPEED_ACTION_SHA} action.yml
+dtolnay/rust-toolchain dtolnay/rust-toolchain ${DTOLNAY_RUST_TOOLCHAIN_REF} DTOLNAY_RUST_TOOLCHAIN_SHA ${DTOLNAY_RUST_TOOLCHAIN_SHA} action.yml
+Swatinem/rust-cache Swatinem/rust-cache ${SWATINEM_RUST_CACHE_REF} SWATINEM_RUST_CACHE_SHA ${SWATINEM_RUST_CACHE_SHA} action.yml
+canonical/actions canonical/actions/build-snap ${CANONICAL_ACTIONS_REF} CANONICAL_ACTIONS_SHA ${CANONICAL_ACTIONS_SHA} build-snap/action.yml
+canonical/actions canonical/actions/close-snap ${CANONICAL_ACTIONS_REF} CANONICAL_ACTIONS_SHA ${CANONICAL_ACTIONS_SHA} close-snap/action.yml
+vmactions/freebsd-vm vmactions/freebsd-vm ${VMACTIONS_FREEBSD_VM_REF} VMACTIONS_FREEBSD_VM_SHA ${VMACTIONS_FREEBSD_VM_SHA} action.yml
+EOF
+}
+
+action_latest_sha() {
+  local repo="$1"
+  local ref="$2"
+  local tag object_type object_sha
+  if [[ "$ref" == refs/tags/* ]]; then
+    tag="${ref#refs/tags/}"
+    object_type="$(gh api "repos/${repo}/git/ref/tags/${tag}" --jq .object.type)"
+    object_sha="$(gh api "repos/${repo}/git/ref/tags/${tag}" --jq .object.sha)"
+    if [ "$object_type" = "tag" ]; then
+      gh api "repos/${repo}/git/tags/${object_sha}" --jq .object.sha
+    else
+      printf '%s\n' "$object_sha"
+    fi
+    return 0
+  fi
+  git ls-remote "https://github.com/${repo}.git" "$ref" | awk '{print $1}'
+}
+
+verify_action_runtime() {
+  local repo="$1"
+  local expected="$2"
+  local path="$3"
+  local yaml
+  yaml="$(curl -fsSL "https://raw.githubusercontent.com/${repo}/${expected}/${path}")"
+  if grep -q "$BANNED_ACTION_RUNTIME" <<<"$yaml"; then
+    die "${repo}@${expected} uses $BANNED_ACTION_RUNTIME"
+  fi
+}
+
+verify_action_pins() {
+  require_cmd gh
+  require_cmd curl
+  local repo use_repo ref var expected path actual unmanaged used registered
+  registered="$(mktemp)"
+  while read -r repo use_repo ref var expected path; do
+    printf '%s@%s\n' "$use_repo" "$expected" >> "$registered"
+    actual="$(action_latest_sha "$repo" "$ref")"
+    [ "$actual" = "$expected" ] || die "$repo $ref drift: $expected != $actual"
+    verify_action_runtime "$repo" "$expected" "$path"
+    grep -R "${use_repo}@${expected}" "$ROOT_DIR/.github" >/dev/null || die "$use_repo pin unused"
+    grep -q "readonly ${var}=\"${expected}\"" "$ROOT_DIR/scripts/ci/ci.sh" || die "$var not centralized"
+  done < <(action_registry)
+  unmanaged="$(grep -RhoE 'uses:[[:space:]]+[^[:space:]]+@[^[:space:]]+' "$ROOT_DIR/.github" \
+    | awk '{print $2}' \
+    | grep -v '^./' \
+    | grep -vE '@[0-9a-f]{40}$' || true)"
+  [ -z "$unmanaged" ] || die "unmanaged action refs: $unmanaged"
+  used="$(grep -RhoE 'uses:[[:space:]]+[^[:space:]]+@[^[:space:]]+' "$ROOT_DIR/.github" \
+    | awk '{print $2}' \
+    | grep -v '^./' \
+    | sort -u || true)"
+  while IFS= read -r used_ref; do
+    [ -z "$used_ref" ] && continue
+    grep -qx "$used_ref" "$registered" || die "unregistered action ref: $used_ref"
+  done <<<"$used"
+}
+
+replace_all() {
+  local from="$1"
+  local to="$2"
+  git -C "$ROOT_DIR" grep -l "$from" -- .github scripts docs \
+    | while IFS= read -r file; do
+        perl -0pi -e "s/\Q${from}\E/${to}/g" "$ROOT_DIR/$file"
+      done
+}
+
+sync_action_pins() {
+  require_cmd curl
+  local repo use_repo ref var expected path actual
+  while read -r repo use_repo ref var expected path; do
+    actual="$(action_latest_sha "$repo" "$ref")"
+    [ -n "$actual" ] || die "cannot resolve $repo $ref"
+    verify_action_runtime "$repo" "$actual" "$path"
+    replace_all "$expected" "$actual"
+  done < <(action_registry)
+}
+
+install_cargo_edit() {
+  cargo install cargo-edit --locked
+}
+
+update_rust_deps() {
+  require_rust_tools
+  install_cargo_edit
+  cargo upgrade --workspace --incompatible
+  cargo update
+}
+
+verify_rust_deps() {
+  require_rust_tools
+  cargo fmt -- --check
+  cargo clippy --locked --all-targets -- -D warnings -A unknown-lints -A clippy::type_complexity -A clippy::new-without-default
+  cargo test --locked --lib --bins --tests
+}
+
+git_setup_bot() {
+  git -C "$ROOT_DIR" config user.name "${GIT_AUTHOR_NAME:-github-actions[bot]}"
+  git -C "$ROOT_DIR" config user.email "${GIT_AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+}
+
+git_has_changes() {
+  ! git -C "$ROOT_DIR" diff --quiet
+}
+
+deps_stage_branch() {
+  require_base_tools
+  git_setup_bot
+  git -C "$ROOT_DIR" fetch origin main
+  git -C "$ROOT_DIR" switch -C "$DEPS_BRANCH" origin/main
+}
+
+deps_update() {
+  deps_stage_branch
+  sync_action_pins
+  update_rust_deps
+  if git_has_changes; then
+    emit_output decision build
+    log "decision=build"
+  else
+    emit_output decision noop
+    log "decision=noop"
+  fi
+}
+
+deps_commit_and_push() {
+  [ "$PUBLISH" = "true" ] || return 0
+  git_has_changes || return 0
+  git -C "$ROOT_DIR" add Cargo.toml Cargo.lock scripts/ci/ci.sh .github docs/NightlyBuilds.md
+  git -C "$ROOT_DIR" commit -m "ci: update centralized dependencies"
+  git -C "$ROOT_DIR" push --force-with-lease origin "HEAD:refs/heads/${DEPS_BRANCH}"
+  git -C "$ROOT_DIR" push origin "HEAD:refs/heads/main"
+}
+
+deps_verify_all() {
+  verify_action_pins
+  verify_rust_deps
+}
+
+deps_weekly() {
+  deps_update
+  git_has_changes || return 0
+  MODE=deps-verify bash "$ROOT_DIR/scripts/ci/ci.sh"
+  deps_commit_and_push
+  close_failure_issue
 }
 
 usage() {
   cat <<EOF
-usage: ci.sh <admission|build-builder|promote-builder|build-packages|promote|publish-release|gc|report-failure|close-failure|verify>
+usage: ci.sh <admission|build-builder|promote-builder|build-packages|promote|publish-release|gc|report-failure|close-failure|verify|deps-update|deps-actions-verify|deps-verify|deps-weekly>
 EOF
 }
 
@@ -641,6 +840,10 @@ main() {
     report-failure) report_failure ;;
     close-failure) close_failure_issue ;;
     verify) verify ;;
+    deps-update) deps_update ;;
+    deps-actions-verify) verify_action_pins ;;
+    deps-verify) deps_verify_all ;;
+    deps-weekly) deps_weekly ;;
     nightly|packages) build_packages ;;
     builder) build_builder ;;
     *) usage; exit 2 ;;

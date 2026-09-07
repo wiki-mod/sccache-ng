@@ -65,7 +65,7 @@ jobs:
       version: ${{ steps.admission.outputs.version }}
       run_builder: ${{ steps.admission.outputs.run_builder }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - id: admission
         run: bash ./scripts/ci/ci.sh admission
         env:
@@ -93,7 +93,7 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - run: bash ./scripts/ci/ci.sh build-builder
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.arch == 'all' || inputs.arch == matrix.arch }}
         env:
@@ -118,7 +118,7 @@ jobs:
     if: ${{ needs.plan.outputs.run_builder == 'true' && (github.event_name != 'workflow_dispatch' || inputs.arch == 'all') }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           pattern: builder-*
@@ -146,7 +146,7 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: |
@@ -180,7 +180,7 @@ jobs:
     if: ${{ (needs.plan.outputs.decision == 'build' || inputs.mode == 'packages') && (github.event_name != 'workflow_dispatch' || inputs.arch == 'all') }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           pattern: outputs-*
@@ -200,10 +200,10 @@ jobs:
           PUBLISH: ${{ inputs.publish || 'true' }}
           UPSTREAM_REF: ${{ inputs.upstream_ref || 'main' }}
           DEBUG: ${{ inputs.debug || 'false' }}
-      - uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661
+      - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a
         with:
           subject-checksums: dist/sccache-ng/SHA256SUMS
-      - uses: actions/attest-sbom@51e74621a501c89df81fc1391c5a8f4cfc9fab2f
+      - uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34
         with:
           subject-checksums: dist/sccache-ng/SHA256SUMS
           sbom-path: dist/sccache-ng/sbom.spdx.json
@@ -224,7 +224,7 @@ jobs:
     if: ${{ inputs.mode == 'gc' }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - run: bash ./scripts/ci/ci.sh gc
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -237,7 +237,7 @@ jobs:
     if: ${{ inputs.mode == 'verify' }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - run: bash ./scripts/ci/ci.sh verify
         env:
           MODE: verify
@@ -250,7 +250,7 @@ jobs:
     if: ${{ failure() }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - run: bash ./scripts/ci/ci.sh report-failure
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

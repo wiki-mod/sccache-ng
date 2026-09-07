@@ -3,6 +3,7 @@ name: Snap
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 jobs:
   Snap:
@@ -12,12 +13,12 @@ jobs:
 
     steps:
     - name: Check out code
-      uses: actions/checkout@v5
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       with:
         fetch-depth: 0  # needed for version determination
 
     - name: Build and publish the snap
-      uses: canonical/actions/build-snap@release
+      uses: canonical/actions/build-snap@369aa83db4b62bdf1cb4240f651f11f0eb9fac11
       with:
         snapcraft-channel: edge
         review-opts: --allow-classic
