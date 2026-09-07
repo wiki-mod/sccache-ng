@@ -58,6 +58,13 @@ if [ "$DEBUG" = "true" ]; then
   set -x
 fi
 
+if [ -n "${PROJECT_AUTOMATION_PAT:-}" ]; then
+  export GH_TOKEN="$PROJECT_AUTOMATION_PAT"
+  export GITHUB_TOKEN="$PROJECT_AUTOMATION_PAT"
+elif [ -n "${GITHUB_TOKEN:-}" ]; then
+  export GH_TOKEN="${GH_TOKEN:-$GITHUB_TOKEN}"
+fi
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && { pwd -W 2>/dev/null || pwd; })"
 WORK_DIR="${RUNNER_TEMP:-$ROOT_DIR/.tmp}/sccache-ng-ci"
 UPSTREAM_DIR="$WORK_DIR/upstream"
@@ -266,7 +273,7 @@ admission() {
 
 docker_login() {
   [ "$PUBLISH" = "true" ] || return 0
-  printf '%s' "${GITHUB_TOKEN:?GITHUB_TOKEN is required}" \
+  printf '%s' "${GH_TOKEN:?PROJECT_AUTOMATION_PAT or GITHUB_TOKEN is required}" \
     | docker login ghcr.io -u "${GITHUB_ACTOR:?GITHUB_ACTOR is required}" --password-stdin
 }
 
