@@ -21,3 +21,9 @@ tests/**/Cargo.lock
 .direnv/
 result
 .vscode/settings.json
+
+# what: ignore nightly outputs
+# why: keep build files untracked
+# from: issue N/A | pr N/A
+/dist/sccache-ng/
+/.tmp/

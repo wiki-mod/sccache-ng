@@ -1,0 +1,6 @@
+# what: keep CI text files LF
+# why: bash needs stable line endings
+# from: issue N/A | pr N/A
+*.sh text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
