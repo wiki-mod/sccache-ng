@@ -245,16 +245,21 @@ admission() {
   resolve_upstream
   write_identity_metadata
   local sha
+  local run_builder="false"
+  local builder_exists="false"
   sha="$(upstream_sha)"
   emit_output upstream_sha "$sha"
   emit_output image "$(image_name)"
   emit_output builder_image "$(builder_image_name)"
   emit_output version "$(upstream_version)"
-  if [ "$REQUESTED_MODE" = "builder" ] || is_berlin_weekly_window || ! builder_image_available; then
-    emit_output run_builder true
-  else
-    emit_output run_builder false
+  if builder_image_available; then
+    builder_exists="true"
   fi
+  if [ "$REQUESTED_MODE" = "builder" ] || is_berlin_weekly_window || [ "$builder_exists" != "true" ]; then
+    run_builder="true"
+  fi
+  emit_output run_builder "$run_builder"
+  log "run_builder=$run_builder builder_image_exists=$builder_exists"
   if admission_needed; then
     emit_output decision build
     log "decision=build"
