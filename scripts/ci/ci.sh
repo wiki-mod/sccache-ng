@@ -312,11 +312,11 @@ build_builder() {
     --label "org.opencontainers.image.source=https://github.com/$(gh_repo)" \
     --label "org.opencontainers.image.created=$(date -u +%FT%TZ)" \
     --label "org.opencontainers.image.revision=${GITHUB_SHA:-local}" \
-    --metadata-file "$META_DIR/builder-image.json" \
+    --metadata-file "$META_DIR/builder-$(native_arch).json" \
     --output "$output" \
     -f "$file" "$WORK_DIR"
   if [ "$PUBLISH" = "true" ]; then
-    jq -r '."containerimage.digest"' "$META_DIR/builder-image.json" > "$META_DIR/builder.digest"
+    jq -r '."containerimage.digest"' "$META_DIR/builder-$(native_arch).json" > "$META_DIR/builder-$(native_arch).digest"
   fi
 }
 
