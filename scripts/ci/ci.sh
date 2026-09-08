@@ -195,16 +195,9 @@ write_identity_metadata() {
 }
 
 builder_image_available() {
-  local owner package base match
-  owner="$(repo_owner)"
-  package="${PROJECT_NAME}-builder"
-  base="/orgs/${owner}/packages/container/${package}/versions"
-  match="$(gh api "$base" --paginate --jq '.[] | select(.metadata.container.tags[]? == "nightly") | .id' 2>/dev/null | head -n1 || true)"
-  if [ -z "$match" ]; then
-    base="/users/${owner}/packages/container/${package}/versions"
-    match="$(gh api "$base" --paginate --jq '.[] | select(.metadata.container.tags[]? == "nightly") | .id' 2>/dev/null | head -n1 || true)"
-  fi
-  [ -n "$match" ]
+  require_docker_tools
+  docker_login
+  docker manifest inspect "$(builder_image_name):nightly" >/dev/null 2>&1
 }
 
 is_berlin_weekly_window() {
