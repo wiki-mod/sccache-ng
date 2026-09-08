@@ -61,9 +61,9 @@ The next successful promoted run comments and closes it.
 
 ## Manual runs
 
-The workflow supports `workflow_dispatch` with these controls:
+`build_sccache.yml` supports `workflow_dispatch` with these controls:
 
-- `mode`: `nightly`, `builder`, `packages`, `gc`, or `verify`
+- `mode`: `nightly`, `builder`, `packages`, `gc`, `verify`, `deps-weekly`, `deps-update`, `deps-actions-verify`, or `deps-verify`
 - `force`: bypass accepted-state `NOOP`
 - `publish`: publish or only verify locally inside the run
 - `upstream_ref`: upstream branch, tag, or SHA
@@ -79,16 +79,16 @@ Workflow YAML is orchestration only. Implementation and policy live in
 
 ## Centralized dependencies
 
-The `centralized dependencies` workflow keeps dependency inputs current without
-opening pull requests. It runs on the staging branch
-`ci/centralized_versions`, updates all managed inputs, runs verification, and
-pushes the exact checked commit to `main` only after verification succeeds.
+Dependency updates are handled by the same workflow through the dependency
+modes above. The script keeps the staging branch `ci/centralized_versions` as
+an internal working branch, updates managed inputs without pull requests, runs
+verification, and pushes to `main` only after verification succeeds.
 
 Managed dependency classes include:
 
 - direct Rust dependencies in `Cargo.toml`
 - resolved Rust dependencies in `Cargo.lock`
-- external GitHub Action SHAs used by these workflows
+- external GitHub Action refs used by these workflows
 - external Action runtime checks, including the Node 20 ban
 - floating base images consumed by the central build script
 
