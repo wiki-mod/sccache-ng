@@ -504,6 +504,21 @@ EOF
   fi
 }
 
+manifest_platform_digest() {
+  require_cmd jq
+  local image digest arch
+  image="$1"
+  digest="$2"
+  arch="$3"
+  docker manifest inspect "${image}@${digest}" \
+    | jq -r --arg arch "$arch" '
+        .manifests[]?
+        | select(.platform.os == "linux" and .platform.architecture == $arch)
+        | .digest
+      ' \
+    | head -n1
+}
+
 build_packages() {
   prepare_source
   build_binaries
@@ -521,11 +536,14 @@ promote_builder() {
   require_docker_tools
   [ "$PUBLISH" = "true" ] || return 0
   docker_login
-  local image refs=()
+  local image arch digest platform_digest refs=()
   image="$(builder_image_name)"
-  while IFS= read -r digest; do
-    refs+=("${image}@${digest}")
-  done < <(find "$META_DIR" -name 'builder.digest' -type f -exec cat {} \;)
+  while IFS= read -r arch; do
+    digest="$(cat "$META_DIR/builder-${arch}.digest")"
+    platform_digest="$(manifest_platform_digest "$image" "$digest" "$arch")"
+    [ -n "$platform_digest" ] || die "missing builder platform digest for $arch"
+    refs+=("${image}@${platform_digest}")
+  done < <(selected_arches)
   [ "${#refs[@]}" -gt 0 ] || die "no builder digests found"
   docker buildx imagetools create \
     -t "${image}:nightly" \
@@ -540,12 +558,15 @@ promote_runtime() {
   [ "$PUBLISH" = "true" ] || return 0
   docker_login
   prepare_source
-  local image sha refs=()
+  local image sha arch digest platform_digest refs=()
   image="$(image_name)"
   sha="$(upstream_sha)"
-  while IFS= read -r digest; do
-    refs+=("${image}@${digest}")
-  done < <(find "$META_DIR" -name 'runtime-*.digest' -type f -exec cat {} \;)
+  while IFS= read -r arch; do
+    digest="$(cat "$META_DIR/runtime-${arch}.digest")"
+    platform_digest="$(manifest_platform_digest "$image" "$digest" "$arch")"
+    [ -n "$platform_digest" ] || die "missing runtime platform digest for $arch"
+    refs+=("${image}@${platform_digest}")
+  done < <(selected_arches)
   [ "${#refs[@]}" -gt 0 ] || die "no runtime digests found"
   docker buildx imagetools create \
     -t "${image}:latest" \
