@@ -8,8 +8,8 @@ readonly NIGHTLY_RELEASE="sccache-ng-nightly"
 readonly FAILURE_LABEL_NIGHTLY="Nightly"
 readonly FAILURE_LABEL_CI="CI-Failure"
 readonly FAILURE_MARKER="<!-- sccache-ng-nightly-failure -->"
-readonly ALPINE_IMAGE="alpine:latest"
-readonly RUST_BUILDER_IMAGE="rust:latest-alpine"
+readonly ALPINE_IMAGE="alpine:3.24"
+readonly RUST_BUILDER_IMAGE="rust:alpine3.24"
 readonly RETENTION_KEEP="7"
 readonly RETENTION_DAYS="14"
 readonly CARGO_FLAGS="--locked --release --all-features --bins"
@@ -569,6 +569,7 @@ failure_issue_number() {
 report_failure() {
   require_base_tools
   [ "$PUBLISH" = "true" ] || return 0
+  ensure_dirs
   local number body title
   title="sccache-ng nightly failed"
   body="$WORK_DIR/failure.md"
@@ -590,6 +591,7 @@ report_failure() {
 close_failure_issue() {
   require_base_tools
   [ "$PUBLISH" = "true" ] || return 0
+  ensure_dirs
   local number body
   number="$(failure_issue_number || true)"
   [ -n "$number" ] || return 0
