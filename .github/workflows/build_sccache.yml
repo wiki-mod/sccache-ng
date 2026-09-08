@@ -214,10 +214,10 @@ jobs:
           DEBUG: ${{ inputs.debug || 'false' }}
       - uses: actions/attest-build-provenance@v1
         with:
-          subject-checksums: dist/sccache-ng/SHA256SUMS
+          subject-path: dist/sccache-ng
       - uses: actions/attest-sbom@v1
         with:
-          subject-checksums: dist/sccache-ng/SHA256SUMS
+          subject-path: dist/sccache-ng
           sbom-path: dist/sccache-ng/sbom.spdx.json
       - run: bash ./scripts/ci/ci.sh close-failure
         env:
