@@ -194,6 +194,19 @@ write_identity_metadata() {
   identity_json > "$(metadata_path)"
 }
 
+builder_image_available() {
+  local owner package base match
+  owner="$(repo_owner)"
+  package="${PROJECT_NAME}-builder"
+  base="/orgs/${owner}/packages/container/${package}/versions"
+  match="$(gh api "$base" --paginate --jq '.[] | select(.metadata.container.tags[]? == "nightly") | .id' 2>/dev/null | head -n1 || true)"
+  if [ -z "$match" ]; then
+    base="/users/${owner}/packages/container/${package}/versions"
+    match="$(gh api "$base" --paginate --jq '.[] | select(.metadata.container.tags[]? == "nightly") | .id' 2>/dev/null | head -n1 || true)"
+  fi
+  [ -n "$match" ]
+}
+
 is_berlin_weekly_window() {
   [ "$(TZ=Europe/Berlin date +%u)" = "7" ] || return 1
   [ "$(TZ=Europe/Berlin date +%H)" = "04" ] || return 1
@@ -237,7 +250,7 @@ admission() {
   emit_output image "$(image_name)"
   emit_output builder_image "$(builder_image_name)"
   emit_output version "$(upstream_version)"
-  if [ "$REQUESTED_MODE" = "builder" ] || is_berlin_weekly_window; then
+  if [ "$REQUESTED_MODE" = "builder" ] || is_berlin_weekly_window || ! builder_image_available; then
     emit_output run_builder true
   else
     emit_output run_builder false
