@@ -138,6 +138,12 @@ require_docker_tools() {
   docker buildx version >/dev/null
 }
 
+ensure_buildx_builder() {
+  local name="$1"
+  docker buildx rm -f "$name" >/dev/null 2>&1 || true
+  docker buildx create --name "$name" --driver docker-container --use --bootstrap >/dev/null
+}
+
 require_rust_tools() {
   require_cmd cargo
   require_cmd rustc
@@ -294,6 +300,7 @@ build_builder() {
   local file image output
   arch_requested "$(native_arch)" || return 0
   ensure_dirs
+  ensure_buildx_builder "${PROJECT_NAME}-builder-$(native_arch)"
   file="$(builder_containerfile)"
   image="$(builder_image_name)"
   output="$(build_output "$image" "builder-$(native_arch)")"
@@ -466,6 +473,7 @@ build_runtime_image() {
   cp "$OUT_DIR/bin/$arch/sccache" "$rootfs/sccache"
   cp "$OUT_DIR/bin/$arch/sccache-dist" "$rootfs/sccache-dist"
   file="$WORK_DIR/Containerfile.runtime"
+  ensure_buildx_builder "${PROJECT_NAME}-runtime-$arch"
   cat > "$file" <<EOF
 FROM ${ALPINE_IMAGE}
 LABEL org.opencontainers.image.title="${PROJECT_NAME}"
