@@ -805,7 +805,7 @@ verify_rust_deps() {
   require_rust_tools
   cargo fmt -- --check
   cargo clippy --locked --all-targets -- -D warnings -A unknown-lints -A clippy::type_complexity -A clippy::new-without-default
-  cargo test --locked --lib --bins --tests
+  cargo test --locked --all-features --lib --bins --tests
 }
 
 git_setup_bot() {
